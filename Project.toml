@@ -1,0 +1,4 @@
+name = "ArraySlices"
+uuid = "75a8b01a-66eb-495f-95b7-61ae6c46a773"
+authors = ["Thomas Burton <tburton5572@gmail.com>"]
+version = "0.1.0"

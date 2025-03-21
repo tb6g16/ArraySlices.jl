@@ -1,7 +1,7 @@
 __precompile__()
 module ArraySlices
 
-import Base: length, size, eltype, getindex
+import Base: length, size, eltype, getindex, Slice, OneTo
 
 export slices, columns, rows
 
@@ -11,7 +11,7 @@ export slices, columns, rows
 # D : indexed dimension of the array
 # A : array type
 # 
-immutable SliceIterator{F, D, A<:AbstractArray} <: AbstractVector{F}
+struct SliceIterator{F, D, A<:AbstractArray} <: AbstractVector{F}
     array::A
 end
 
@@ -29,29 +29,25 @@ Return a `SliceIterator` object to loop over the slices of `array` along
 dimension `dim`. 
 
 """
-function slices{T, N, D}(array::AbstractArray{T, N}, ::Type{Val{D}})
+function slices(array::AbstractArray{T, N}, ::Type{Val{D}}) where {T, N, D}
     # checks
     1 <= D <= N || error("invalid slice dimension")
 
     # construct type of slice
     # example: SubArray{Float64, 1, Array{Float64,2}, Tuple{Int64, Colon}, true}
-    F = SubArray{T, 
-                 N-1, 
-                 typeof(array), 
-                 Tuple{[j == D ? Int : Colon for j = 1:N]...},
-                 _get_L(D, N)}
+    F = SubArray{T, N-1, typeof(array), Tuple{[j == D ? Int : Slice{OneTo{Int64}} for j = 1:N]...}, _get_L(D, N)}
     
     # build and return iterator
     SliceIterator{F, D, typeof(array)}(array)
 end
 
 # ~~~ Array interface ~~~
-eltype{F}(s::SliceIterator{F}) = F
-length{F, D}(s::SliceIterator{F, D}) = size(s.array, D)
+eltype(s::SliceIterator{F}) where {F} = F
+length(s::SliceIterator{F, D}) where {F, D} = size(s.array, D)
 size(s::SliceIterator) = (length(s), )
 
 # build code that produces slices with the correct indexing
-@generated function getindex{F, D, A}(s::SliceIterator{F, D, A}, i::Integer)
+@generated function getindex(s::SliceIterator{F, D, A}, i::Integer) where {F, D, A}
     args = [j == D ? :(i) : :(Colon()) for j = 1:ndims(A)]
     return :(view(s.array, $(args...)))
 end
